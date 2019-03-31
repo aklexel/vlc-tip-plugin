@@ -11,7 +11,7 @@ VLC_PLUGIN_DIR := $(shell $(PKG_CONFIG) --variable=pluginsdir vlc-plugin)
  
 plugindir := $(VLC_PLUGIN_DIR)/control
  
-override CC += -std=gnu99
+override CC += -std=gnu11
 override CPPFLAGS += -DPIC -I. -Isrc
 override CFLAGS += -fPIC
 override LDFLAGS += -Wl,-no-undefined
