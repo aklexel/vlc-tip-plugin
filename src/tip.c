@@ -31,9 +31,10 @@
 #define _(str)  dgettext(DOMAIN, str)
 #define N_(str) (str)
 
-#define KEY_COMMA       0x0000002c
-#define KEY_DOT         0x0000002e
-#define KEY_QUESTION    0x0000002f
+#define KEY_COMMA           0x0000002c
+#define KEY_DOT             0x0000002e
+#define KEY_QUESTION        0x0000002f
+#define KEY_SHIFT_QUESTION  0x0200003f
  
 #include <stdlib.h>
 /* VLC core API headers */
@@ -60,11 +61,13 @@ static void TimerEvent      ( void * );
 static void ChangeAudioTrack( input_thread_t *, int64_t );
 static void ChangeInput     ( intf_thread_t *, input_thread_t * );
 static void ChangeVout      ( intf_thread_t *, vout_thread_t * );
-static void DisplayPosition ( vout_thread_t *, int, input_thread_t * );
- 
+
 const char* MAIN_AUDIOTRACK_NUM = "tip-main_audiotrack";
 const char* TRANSLATED_AUDIOTRACK_NUM = "tip-translated_audiotrack";
 const char* TIME_TO_TRANSLATE = "tip-time-to-translate";
+
+#define DisplayMessage( vout, ... ) \
+    vout_OSDText( vout, VOUT_SPU_CHANNEL_OSD, SUBPICTURE_ALIGN_TOP | SUBPICTURE_ALIGN_LEFT,  __VA_ARGS__ );
 
 /*****************************************************************************
  * Module descriptor
@@ -72,7 +75,7 @@ const char* TIME_TO_TRANSLATE = "tip-time-to-translate";
 vlc_module_begin ()
     set_text_domain( DOMAIN )
     set_shortname( N_("TIP") )
-    set_description( N_("Translate it, please") )
+    set_description( N_("Translate it, please (TIP)") )
     set_capability( "interface", 0 )
     set_category( CAT_INTERFACE )
     set_subcategory( SUBCAT_INTERFACE_CONTROL )
@@ -89,6 +92,9 @@ struct intf_sys_t
 {
     vlc_mutex_t      lock;
     vlc_timer_t      timer;
+    
+    int64_t          i_start_time;
+    int64_t          i_end_time;
     
     vout_thread_t   *p_vout;
     input_thread_t  *p_input;
@@ -107,13 +113,15 @@ static int Open( vlc_object_t *p_this )
         return VLC_ENOMEM;
     
     p_intf->p_sys = p_sys;
+    p_sys->i_start_time = -1;
+    p_sys->i_end_time = -1;
     p_sys->p_vout = NULL;
     p_sys->p_input = NULL;
     vlc_mutex_init( &p_sys->lock );
     if ( vlc_timer_create( &p_sys->timer, TimerEvent, p_intf ) )
     {
         vlc_mutex_destroy( &p_sys->lock );
-        free(p_sys);
+        free( p_sys );
         return VLC_EGENERIC;
     }
 
@@ -151,8 +159,8 @@ static void Close( vlc_object_t *p_this )
 static int KeyboardEvent( vlc_object_t *libvlc, char const *psz_var,
                           vlc_value_t oldval, vlc_value_t newval, void *p_data )
 {
-    (void) psz_var;
-    (void) oldval;
+    VLC_UNUSED( psz_var );
+    VLC_UNUSED( oldval );
     intf_thread_t *p_intf = (intf_thread_t *)p_data;
     intf_sys_t *p_sys = p_intf->p_sys;
     
@@ -161,30 +169,44 @@ static int KeyboardEvent( vlc_object_t *libvlc, char const *psz_var,
     vlc_mutex_lock( &p_intf->p_sys->lock );
     input_thread_t *p_input = p_sys->p_input ? vlc_object_hold( p_sys->p_input )
                                              : NULL;
-    vout_thread_t *p_vout = p_sys->p_vout ? vlc_object_hold( p_sys->p_vout )
-                                          : NULL;
+    vout_thread_t *p_vout = p_sys->p_vout ?    vlc_object_hold( p_sys->p_vout )
+                                             : NULL;
     vlc_mutex_unlock( &p_intf->p_sys->lock );
     
     switch ( newval.i_int )
     {
         /* translate the last few seconds */
-        case KEY_COMMA:
-            /* change a language */
-            if( p_input )
-            {
-                int64_t i_num = var_InheritInteger( p_input, TRANSLATED_AUDIOTRACK_NUM );
-                ChangeAudioTrack( p_input, i_num );
-            }
-            /* move backward */
+        case KEY_QUESTION:
+        {
             if( p_input && var_GetBool( p_input, "can-seek" ) )
             {
+                /* change a language */
+                int64_t i_num = var_InheritInteger( p_input, TRANSLATED_AUDIOTRACK_NUM );
+                ChangeAudioTrack( p_input, i_num );
+                /* move backward */
                 int64_t i_time = var_InheritInteger( p_input, TIME_TO_TRANSLATE );
                 msg_Dbg( libvlc, "move backward %" PRId64 " sec", i_time );
-                var_SetInteger( p_input, "time-offset", -i_time * CLOCK_FREQ );
-                DisplayPosition( p_vout, 1, p_input );
+            
+                p_sys->i_end_time = var_GetInteger( p_input, "time" );
+                p_sys->i_start_time = p_sys->i_end_time - i_time * CLOCK_FREQ;
+                var_SetInteger( p_input, "time", p_sys->i_start_time );
+                DisplayMessage(p_vout, p_sys->i_end_time - p_sys->i_start_time, "TIP: translate");
                 vlc_timer_schedule( p_sys->timer, false, i_time * CLOCK_FREQ, 0 );
             }
             break;
+        }
+        /* repeat the last translated interval */    
+        case KEY_SHIFT_QUESTION:
+        {
+            if ( p_sys->i_start_time >= 0 && p_input && var_GetBool(p_input, "can-seek") )
+            {
+                int64_t i_num = var_InheritInteger( p_input, MAIN_AUDIOTRACK_NUM );
+                ChangeAudioTrack( p_input, i_num );
+                var_SetInteger( p_input, "time", p_sys->i_start_time );
+                DisplayMessage( p_vout, p_sys->i_end_time - p_sys->i_start_time, "TIP: repeat" );
+                break;
+            }
+        }
     }
     
     if( p_input != NULL )
@@ -201,9 +223,9 @@ static int KeyboardEvent( vlc_object_t *libvlc, char const *psz_var,
 static int PlaylistEvent( vlc_object_t *p_this, char const *psz_var,
                           vlc_value_t oldval, vlc_value_t newval, void *p_data )
 {
-    (void) p_this; 
-    (void) psz_var; 
-    (void) oldval;
+    VLC_UNUSED( p_this ); 
+    VLC_UNUSED( psz_var ); 
+    VLC_UNUSED( oldval );
     intf_thread_t *p_intf = p_data;
 
     ChangeInput( p_intf, newval.p_address );
@@ -219,8 +241,8 @@ static int InputEvent( vlc_object_t *p_this, char const *psz_var,
 {
     input_thread_t *p_input = (input_thread_t *)p_this;
     intf_thread_t *p_intf = p_data;
-    (void) psz_var; 
-    (void) oldval;
+    VLC_UNUSED( psz_var );
+    VLC_UNUSED( oldval );
 
     if( newval.i_int == INPUT_EVENT_VOUT )
         ChangeVout( p_intf, input_GetVout( p_input ) );
@@ -235,9 +257,9 @@ static void TimerEvent(void *p_data) {
     intf_thread_t *p_intf = (intf_thread_t *) p_data;
     intf_sys_t *p_sys = p_intf->p_sys;
 
-    msg_Dbg(p_intf, "timer event");
-    int64_t i_num = var_InheritInteger(p_sys->p_input, MAIN_AUDIOTRACK_NUM);
-    ChangeAudioTrack(p_sys->p_input, i_num);
+    msg_Dbg( p_intf, "timer event" );
+    int64_t i_num = var_InheritInteger( p_sys->p_input, MAIN_AUDIOTRACK_NUM );
+    ChangeAudioTrack( p_sys->p_input, i_num );
 }
 
 static void ChangeAudioTrack( input_thread_t* p_input, int64_t i_num ) {
@@ -299,46 +321,5 @@ static void ChangeVout( intf_thread_t *p_intf, vout_thread_t *p_vout )
     if( p_old_vout != NULL )
     {
         vlc_object_release( p_old_vout );
-    }
-}
-
-static void ClearChannels( vout_thread_t *p_vout, int slider_chan )
-{
-    if( p_vout )
-    {
-        vout_FlushSubpictureChannel( p_vout, VOUT_SPU_CHANNEL_OSD );
-        vout_FlushSubpictureChannel( p_vout, slider_chan );
-    }
-}
-
-static void DisplayPosition( vout_thread_t *p_vout, int slider_chan, input_thread_t *p_input )
-{
-    char psz_duration[MSTRTIME_MAX_SIZE];
-    char psz_time[MSTRTIME_MAX_SIZE];
-
-    if( p_vout == NULL ) return;
-
-    ClearChannels( p_vout, slider_chan );
-
-    int64_t t = var_GetInteger( p_input, "time" ) / CLOCK_FREQ;
-    int64_t l = var_GetInteger( p_input, "length" ) / CLOCK_FREQ;
-
-    secstotimestr( psz_time, t );
-
-    if( l > 0 )
-    {
-        secstotimestr( psz_duration, l );
-        vout_OSDMessage(p_vout, VOUT_SPU_CHANNEL_OSD, "%s / %s", psz_time, psz_duration);
-    }
-    else if( t > 0 )
-    {
-        vout_OSDMessage(p_vout, VOUT_SPU_CHANNEL_OSD, "%s", psz_time );
-    }
-
-    if( var_GetBool( p_vout, "fullscreen" ) )
-    {
-        vlc_value_t pos;
-        var_Get( p_input, "position", &pos );
-        vout_OSDSlider( p_vout, slider_chan, pos.f_float * 100, OSD_HOR_SLIDER );
     }
 }
