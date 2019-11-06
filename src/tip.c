@@ -33,7 +33,7 @@
 
 #define KEY_COMMA           0x0000002c
 #define KEY_DOT             0x0000002e
-#define KEY_QUESTION        0x0000002f
+#define KEY_SLASH           0x0000002f
 #define KEY_SHIFT_QUESTION  0x0200003f
  
 #include <stdlib.h>
@@ -176,7 +176,7 @@ static int KeyboardEvent( vlc_object_t *libvlc, char const *psz_var,
     switch ( newval.i_int )
     {
         /* translate the last few seconds */
-        case KEY_QUESTION:
+        case KEY_SLASH:
         {
             if( p_input && var_GetBool( p_input, "can-seek" ) )
             {
@@ -195,7 +195,7 @@ static int KeyboardEvent( vlc_object_t *libvlc, char const *psz_var,
             }
             break;
         }
-        /* repeat the last translated interval */    
+        /* repeat the last translated period */    
         case KEY_SHIFT_QUESTION:
         {
             if ( p_sys->i_start_time >= 0 && p_input && var_GetBool(p_input, "can-seek") )
