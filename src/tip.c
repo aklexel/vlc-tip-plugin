@@ -175,7 +175,7 @@ static int KeyboardEvent( vlc_object_t *libvlc, char const *psz_var,
     
     switch ( newval.i_int )
     {
-        /* translate the last few seconds */
+        /* translate the past few seconds */
         case KEY_SLASH:
         {
             if( p_input && var_GetBool( p_input, "can-seek" ) )
