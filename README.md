@@ -20,3 +20,4 @@ To install the TIP plugin just copy the __libtip_plugin.so__ file (libtip_plugin
 | ------ | ------ | ------ |
 | Linux | [libtip_plugin.so](build/linux/64/libtip_plugin.so) | [libtip_plugin.so](build/linux/32/libtip_plugin.so) |
 | Windows | [libtip_plugin.dll](build/win/64/libtip_plugin.dll) | [libtip_plugin.dll](build/win/32/libtip_plugin.dll)|
+| macOS | [libtip_plugin.dylib](build/macos/64/libtip_plugin.dylib) | - |
