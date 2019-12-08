@@ -14,7 +14,6 @@ plugindir := $(VLC_PLUGIN_DIR)/control
 override CC += -std=gnu11
 override CPPFLAGS += -DPIC -I. -Isrc
 override CFLAGS += -fPIC
-override LDFLAGS += -Wl
 
 override CPPFLAGS += -DMODULE_STRING=\"TIP\"
 override CFLAGS += $(VLC_PLUGIN_CFLAGS)
@@ -23,12 +22,15 @@ override LIBS += $(VLC_PLUGIN_LIBS)
 
 ifeq ($(OS),Windows_NT)
   SUFFIX := dll
+  override LDFLAGS += -Wl,-no-undefined
 else
   UNAME_SYSTEM=$(shell uname -s)
   ifeq ($(UNAME_SYSTEM),Linux)
     SUFFIX := so
+    override LDFLAGS += -Wl,-no-undefined
   else ifeq ($(UNAME_SYSTEM),Darwin)
     SUFFIX := dylib
+    override LDFLAGS += -Wl
   else
     $(error Unknown OS '$(UNAME_SYSTEM)', the plugin can be built on Windows, Linux or macOS)
   endif
