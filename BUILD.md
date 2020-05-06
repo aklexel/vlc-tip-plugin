@@ -4,7 +4,6 @@ This document contains instructions to build the plugin from source.
 To build the plugin you need the __libVLC SDK__ (VLC header files, the pkg-config files, and the import libraries) and the development toolchain (gcc, make and pkg-config).
 The build process is slightly different depending on what OS you build on.
 ## Linux
----
 On Debian/Ubuntu, you can simply install the required packages using apt-get:
 ```sh
 sudo apt-get install libvlc-dev libvlccore-dev gcc make pkg-config
@@ -19,7 +18,6 @@ And then you can install the TIP plugin:
 sudo make install
 ```
 ## Windows
----
 First of all, you need to install development toolchain. I recommend to use **MSYS2** (www.msys2.org) to build the plugin on Windows. After installing MSYS2 open the MSYS2 shell and install the MinGW compiler toolchain:
 ```sh
 pacman -S base-devel mingw-w64-x86_64-toolchain
@@ -46,7 +44,6 @@ make
 ```
 A file named **_libtip_plugin.dll_** should be generated.
 ## macOS
----
 First of all, you need to install development toolchain. Launch the Terminal and type the following command:
 ```sh
 brew install make gcc pkg-config
