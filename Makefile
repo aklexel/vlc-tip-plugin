@@ -20,21 +20,23 @@ override CFLAGS += $(VLC_PLUGIN_CFLAGS)
 override LIBS += $(VLC_PLUGIN_LIBS)
 
 
+ifeq ($(strip $(OS)),)
+  OS=$(shell uname -s)
+endif
+
 ifeq ($(OS),Windows_NT)
   SUFFIX := dll
   override LDFLAGS += -Wl,-no-undefined
+else ifeq ($(OS),Linux)
+  SUFFIX := so
+  override LDFLAGS += -Wl,-no-undefined
+else ifeq ($(OS),Darwin)
+  SUFFIX := dylib
+  override LDFLAGS += -Wl
 else
-  UNAME_SYSTEM=$(shell uname -s)
-  ifeq ($(UNAME_SYSTEM),Linux)
-    SUFFIX := so
-    override LDFLAGS += -Wl,-no-undefined
-  else ifeq ($(UNAME_SYSTEM),Darwin)
-    SUFFIX := dylib
-    override LDFLAGS += -Wl
-  else
-    $(error Unknown OS '$(UNAME_SYSTEM)', the plugin can be built on Windows, Linux or macOS)
-  endif
+  $(error Unknown OS '$(OS)', the plugin can be built on Windows, Linux or macOS)
 endif
+
 
 TARGETS = libtip_plugin.$(SUFFIX)
 

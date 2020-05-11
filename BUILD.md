@@ -3,6 +3,23 @@ This document contains instructions to build the plugin from source.
 
 To build the plugin you need the __libVLC SDK__ (VLC header files, the pkg-config files, and the import libraries) and the development toolchain (gcc, make and pkg-config).
 The build process is slightly different depending on what OS you build on.
+
+## Docker
+The most easy way to build the plugin for Linux and Windows is to use Docker. There are Dockerfile in the *docker* directory for creating a docker image with all required packages installed.
+To build the docker image run the following commands:
+```sh
+cd vlc-tip-plugin
+docker build -t vlc-plugin-build docker
+```
+
+Now to build the plugin for both Linux and Windows (32-bit and 64-bit) you can just run the commands:
+```sh
+cd vlc-tip-plugin
+docker run --rm -v "$PWD:/plugin" vlc-plugin-build
+```
+
+The result plugin files will be stored under the *build* directory.
+
 ## Linux
 On Debian/Ubuntu, you can simply install the required packages using apt-get:
 ```sh
