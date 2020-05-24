@@ -42,6 +42,11 @@ build_for_windows() {
 }
 
 
+if [[ ! "$OS" =~ ^(LINUX|WINDOWS|ALL)$ ]]; then
+    echo "ERROR: Unsupported OS '$OS', please specify one of the following values: 'linux', 'windows' or 'all'"
+    exit 1
+fi
+
 if [[ ! "$BITNESS" =~ ^(32|64|ALL)$ ]]; then
     echo "ERROR: Unsupported bitness '$BITNESS', please specify one of the following values: '32', '64' or 'all'"
     exit 1
@@ -57,9 +62,5 @@ WINDOWS)
 ALL)
     build_for_linux $BITNESS
     build_for_windows $BITNESS
-    ;;
-*)
-    echo "ERROR: Unsupported OS '$OS', the script can build a plugin for Linux or Windows only"
-    exit 1
     ;;
 esac
